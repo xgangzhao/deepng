@@ -3,6 +3,7 @@
 //
 
 use std::convert::TryFrom;
+use std::str::FromStr;
 
 pub struct ChunkType {
     code : [u8; 4],
@@ -15,15 +16,27 @@ impl ChunkType {
 }
 
 impl TryFrom<[u8; 4]> for ChunkType {
-    type Error = Self::Error;
+    type Error = &'static str;
     fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
         let all_valid = value.iter().all(|&x| (x >= 65 && x <= 90) || (x >= 97 && x <= 122));
-        if all_valid == false {
+        if all_valid == true {
             Ok(ChunkType { code: value })
         } else {
             Err("Invalid input!")
         }
     }
+}
+
+impl FromStr for ChunkType {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() == 4 {
+            let value: [u8; 4] = s.as_bytes().try_into()?;
+            Ok(ChunkType::try_from(value)?)
+        } else {
+            Err("The length of str inputed must be 4!")
+        }
+    } 
 }
 
 

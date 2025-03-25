@@ -1,6 +1,32 @@
+// 
+// author: xigang zhao
+//
 
-#![allow(unused_variables)]
-fn main() {
+use std::convert::TryFrom;
+
+pub struct ChunkType {
+    code : [u8; 4],
+}
+
+impl ChunkType {
+    pub fn bytes(&self) -> [u8; 4] {
+        return self.code;
+    }
+}
+
+impl TryFrom<[u8; 4]> for ChunkType {
+    type Error = Self::Error;
+    fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
+        let all_valid = value.iter().all(|&x| (x >= 65 && x <= 90) || (x >= 97 && x <= 122));
+        if all_valid == false {
+            Ok(ChunkType { code: value })
+        } else {
+            Err("Invalid input!")
+        }
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -98,5 +124,4 @@ mod tests {
         let _chunk_string = format!("{}", chunk_type_1);
         let _are_chunks_equal = chunk_type_1 == chunk_type_2;
     }
-}
 }

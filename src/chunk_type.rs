@@ -4,7 +4,9 @@
 
 use std::convert::TryFrom;
 use std::str::FromStr;
+use std::fmt;
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct ChunkType {
     code : [u8; 4],
 }
@@ -31,12 +33,19 @@ impl FromStr for ChunkType {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.len() == 4 {
-            let value: [u8; 4] = s.as_bytes().try_into()?;
+            let value: [u8; 4] = s.to_string().into_bytes().try_into().unwrap();
             Ok(ChunkType::try_from(value)?)
         } else {
             Err("The length of str inputed must be 4!")
         }
     } 
+}
+
+impl fmt::Display for ChunkType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = std::str::from_utf8(&self.code).map_err(|_| fmt::Error)?;
+        write!(f, "{}", s)
+    }
 }
 
 

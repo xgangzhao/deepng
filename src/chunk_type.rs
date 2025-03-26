@@ -15,6 +15,26 @@ impl ChunkType {
     pub fn bytes(&self) -> [u8; 4] {
         return self.code;
     }
+
+    pub fn is_critical(&self) -> bool {
+        return self.code[0].is_ascii_uppercase();
+    }
+
+    pub fn is_public(&self) -> bool {
+        return self.code[1].is_ascii_uppercase();
+    }
+
+    pub fn is_valid(&self) -> bool {
+        return self.code[2].is_ascii_uppercase();
+    }
+
+    pub fn is_reserved_bit_valid(&self) -> bool {
+        return self.is_valid();
+    }
+
+    pub fn is_safe_to_copy(&self) -> bool {
+        return self.code[3].is_ascii_lowercase();
+    }
 }
 
 impl TryFrom<[u8; 4]> for ChunkType {

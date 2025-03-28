@@ -16,10 +16,21 @@ pub struct Chunk {
 impl TryFrom<&[u8]> for Chunk {
     type Error = &'static str;
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        let size = value.len();
-        for piece in value.chunks(4) {
-            todo!()
+        let size: u32 = value.len().try_into().unwrap();
+        if size >= 12 {
+            let length = u32::from(value[0]) << 24 | u32::from(value[1]) << 16 |
+                              u32::from(value[2]) << 8  | u32::from(value[3]);
+            if length + 12 > size {
+                return Err("Invalid input!");
+            }
+            let chunktype = ChunkType::try_from([82, 117, 83, 116]).unwrap();
+            let length_usize: usize = length.try_into().unwrap();
+            let chunkdata = Vec::from(&value[8..(8+length_usize)]);
+            let crc = u32::from(value[8+length_usize]) << 24  | u32::from(value[9+length_usize]) << 16 |
+                           u32::from(value[10+length_usize]) << 8  | u32::from(value[11+length_usize]);
+            return Ok(Chunk { length: length, chunktype: chunktype, chunkdata: chunkdata, crc: crc });
         }
+        return Err("Invalid input!");
     }
 }
 

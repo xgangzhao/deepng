@@ -4,6 +4,7 @@
 
 use std::convert::TryFrom;
 use super::chunk_type::ChunkType;
+use std::fmt;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Chunk {
@@ -31,6 +32,13 @@ impl TryFrom<&[u8]> for Chunk {
             return Ok(Chunk { length: length, chunktype: chunktype, chunkdata: chunkdata, crc: crc });
         }
         return Err("Invalid input!");
+    }
+}
+
+impl fmt::Display for Chunk {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = String::from("Unimplemented");
+        write!(f, "{}", s)
     }
 }
 

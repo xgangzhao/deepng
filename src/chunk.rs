@@ -3,8 +3,11 @@
 //
 
 use std::convert::TryFrom;
-use super::chunk_type::ChunkType;
 use std::fmt;
+use crc32fast::hash;
+use crate::chunk_type;
+use super::chunk_type::ChunkType;
+
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Chunk {
@@ -39,6 +42,39 @@ impl fmt::Display for Chunk {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = String::from("Unimplemented");
         write!(f, "{}", s)
+    }
+}
+
+impl Chunk {
+    pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
+        let size: u32 = data.len().try_into().unwrap();
+        let mut raw_bytes = chunk_type.bytes().to_vec().clone();
+        raw_bytes.extend_from_slice(&data);
+        let crc: u32 = hash(&raw_bytes);
+        return Chunk{length: size, chunktype: chunk_type, chunkdata: data, crc: crc};
+    }
+
+    pub fn length(&self) -> u32 {
+        return self.length;
+    }
+
+    pub fn chunk_type(&self) -> &ChunkType {
+        return &self.chunktype;
+    }
+
+    pub fn data(&self) -> &[u8] {
+        return &self.chunkdata.as_slice();
+    }
+
+    pub fn crc(&self) -> u32 {
+        return self.crc;
+    }
+
+    pub fn data_as_string(&self) -> Result<String, std::str::Utf8Error> {
+        match std::str::from_utf8(&self.chunkdata) {
+            Ok(s) => Ok(s.to_string()),
+            Err(e) => Err(e),
+        }
     }
 }
 

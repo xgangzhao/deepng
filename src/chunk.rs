@@ -5,7 +5,7 @@
 use std::convert::TryFrom;
 use std::fmt;
 use crc32fast::hash;
-use crc::{Crc, CRC_32_ISO_HDLC, crciso33};
+use crc::{Crc, CRC_32_ISO_HDLC};
 use crate::{chunk, chunk_type};
 use super::chunk_type::ChunkType;
 
@@ -23,25 +23,34 @@ impl TryFrom<&[u8]> for Chunk {
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         let size: u32 = value.len().try_into().unwrap();
         if size >= 12 {
-            let length = u32::from(value[0]) << 24 | u32::from(value[1]) << 16 |
-                              u32::from(value[2]) << 8  | u32::from(value[3]);
+            let (length_bytes, value) = value.split_at(Chunk::CHUNK_LENGTH_BYTES);
+            let length = u32::from_be_bytes(length_bytes.try_into().unwrap());
             if length + 12 > size {
                 return Err("Invalid input!");
             }
-            let chunktype_array: [u8; 4] = value[4..8].try_into().unwrap();
-            let chunktype = ChunkType::try_from(chunktype_array).unwrap();
+            let (chunktype_bytes, value) = value.split_at(Chunk::CHUNK_TYPE_BYTES);
+            let chunktype_bytes: [u8; 4] = chunktype_bytes.try_into().unwrap();
+            let chunktype = match ChunkType::try_from(chunktype_bytes) {
+                Ok(ChunkType) => ChunkType,
+                Err(err) => return Err("Invalid input!"),
+            };
             let length_usize: usize = length.try_into().unwrap();
-            let chunkdata = Vec::from(&value[8..(8+length_usize)]);
-            let crc = u32::from(value[8+length_usize]) << 24  | u32::from(value[9+length_usize]) << 16 |
-                           u32::from(value[10+length_usize]) << 8  | u32::from(value[11+length_usize]);
+            let (chunkdata, value) = value.split_at(length_usize);
+            let (crc_bytes, _) = value.split_at(Chunk::CHUNK_CRC_BYTES);
+            let crc_bytes: [u8; 4] = crc_bytes.try_into().unwrap();
+            let bytes_verify: Vec<u8> = chunktype_bytes.iter()
+                                                       .chain(chunkdata.iter())
+                                                       .copied()
+                                                       .collect();
+            let crc_read = u32::from_be_bytes(crc_bytes);
             let crc_obj = Crc::<u32>::new(&CRC_32_ISO_HDLC);
 
-            let real_crc = crc_obj.checksum(&value[4..11+length_usize]);
-            dbg!(real_crc, crc);
-            if real_crc != crc {
+            let crc_verify = crc_obj.checksum(&bytes_verify);
+            dbg!(crc_verify, crc_read);
+            if crc_read != crc_verify {
                 return Err("Invalid crc!");
             }
-            return Ok(Chunk { length: length, chunktype: chunktype, chunkdata: chunkdata, crc: crc });
+            return Ok(Chunk { length: length, chunktype: chunktype, chunkdata: chunkdata.to_vec(), crc: crc_read });
         }
         return Err("Invalid input!");
     }
@@ -55,6 +64,10 @@ impl fmt::Display for Chunk {
 }
 
 impl Chunk {
+    pub const CHUNK_LENGTH_BYTES: usize = 4;
+    pub const CHUNK_TYPE_BYTES:   usize = 4;
+    pub const CHUNK_CRC_BYTES:    usize = 4;
+
     pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
         let size: u32 = data.len().try_into().unwrap();
         let mut raw_bytes = chunk_type.bytes().to_vec().clone();

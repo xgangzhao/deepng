@@ -21,28 +21,29 @@ pub struct Chunk {
 impl TryFrom<&[u8]> for Chunk {
     type Error = &'static str;
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        let size: u32 = value.len().try_into().unwrap();
-        if size >= 12 {
-            let (length_bytes, value) = value.split_at(Chunk::CHUNK_LENGTH_BYTES);
-            let length = u32::from_be_bytes(length_bytes.try_into().unwrap());
-            if length + 12 > size {
+        let size = value.len();
+        let CHUNK_MINIMUM = Chunk::CHUNK_CRC_BYTES + Chunk::CHUNK_LENGTH_BYTES + Chunk::CHUNK_TYPE_BYTES;
+        if size >= CHUNK_MINIMUM {
+            let (blength, value) = value.split_at(Chunk::CHUNK_LENGTH_BYTES);
+            let length = u32::from_be_bytes(blength.try_into().unwrap());
+            let ulength: usize = length.try_into().unwrap();
+            if ulength + CHUNK_MINIMUM > size {
                 return Err("Invalid input!");
             }
-            let (chunktype_bytes, value) = value.split_at(Chunk::CHUNK_TYPE_BYTES);
-            let chunktype_bytes: [u8; 4] = chunktype_bytes.try_into().unwrap();
-            let chunktype = match ChunkType::try_from(chunktype_bytes) {
+            let (bchunktype, value) = value.split_at(Chunk::CHUNK_TYPE_BYTES);
+            let bchunktype: [u8; 4] = bchunktype.try_into().unwrap();
+            let chunktype = match ChunkType::try_from(bchunktype) {
                 Ok(ChunkType) => ChunkType,
                 Err(err) => return Err("Invalid input!"),
             };
-            let length_usize: usize = length.try_into().unwrap();
-            let (chunkdata, value) = value.split_at(length_usize);
-            let (crc_bytes, _) = value.split_at(Chunk::CHUNK_CRC_BYTES);
-            let crc_bytes: [u8; 4] = crc_bytes.try_into().unwrap();
-            let bytes_verify: Vec<u8> = chunktype_bytes.iter()
+            let (chunkdata, value) = value.split_at(ulength);
+            let (bcrc, _) = value.split_at(Chunk::CHUNK_CRC_BYTES);
+            let bcrc: [u8; 4] = bcrc.try_into().unwrap();
+            let bytes_verify: Vec<u8> = bchunktype.iter()
                                                        .chain(chunkdata.iter())
                                                        .copied()
                                                        .collect();
-            let crc_read = u32::from_be_bytes(crc_bytes);
+            let crc_read = u32::from_be_bytes(bcrc);
             let crc_obj = Crc::<u32>::new(&CRC_32_ISO_HDLC);
 
             let crc_verify = crc_obj.checksum(&bytes_verify);

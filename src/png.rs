@@ -5,6 +5,10 @@ struct Png {
 
 impl Png {
     pub const HEADER_SIZE: usize = 8;
+
+    pub fn chunks() {
+        
+    }
 }
 
 #[cfg(test)]

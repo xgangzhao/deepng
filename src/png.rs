@@ -1,13 +1,106 @@
+// 
+// author: xigang zhao
+//
+
+use std::convert::TryFrom;
+use std::fmt;
+use crate::{chunk::Chunk, Error, Result};
+use crate::png_error::PngError;
+
 struct Png {
-    signature : [u8; HEADER_SIZE],
-    chunklist : Vec<Chunk>,
+    header   : [u8; Png::HEADER_SIZE],
+    chunklist: Vec<Chunk>,
+}
+
+impl TryFrom<&[u8]> for Png {
+    type Error = Error;
+    fn try_from(value: &[u8]) -> Result<Self> {
+        let (header, value) = value.split_at(Png::HEADER_SIZE);
+        if header != Png::STANDARD_HEADER {
+            return Err(Box::from(PngError::InvalidHeader));
+        }
+        let header: [u8; Png::HEADER_SIZE] = header.try_into().unwrap();
+        let mut chunklist: Vec<Chunk> = Vec::new();
+        while value.len() >= Chunk::CHUNK_MINIMUM {
+            let chunk = match Chunk::try_from(value) {
+                Ok(ck) => ck,
+                Err(err) => return Err(Box::from(PngError::InvalidChunk(err))),
+            };
+            chunklist.push(chunk);
+            let (_, value) = value.split_at(chunklist.last().unwrap().length() as usize + Chunk::CHUNK_MINIMUM);
+        }
+        return Ok(Png {header: header, chunklist: chunklist });
+    }
+}
+
+impl fmt::Display for Png {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "signature: ");
+        for byte in &self.header {
+            write!(f, "{} ", byte);
+        }
+        writeln!(f, "");
+        for i in 0..self.chunklist.len() {
+            writeln!(f, "chunk {}: ", i);
+            
+        }
+    }
 }
 
 impl Png {
     pub const HEADER_SIZE: usize = 8;
+    pub const STANDARD_HEADER: [u8; Png::HEADER_SIZE] = [137, 80, 78, 71, 13, 10, 26, 10];
 
-    pub fn chunks() {
-        
+    pub fn from_chunks(chunks: Vec<Chunk>) -> Png {
+        let header = Png::STANDARD_HEADER;
+        return Png { header, chunklist: chunks };
+    }
+
+    pub fn append_chunk(&mut self, chunk: Chunk) {
+        self.chunklist.push(chunk);
+    }
+
+    pub fn remove_first_chunk(&mut self, chunktype: &str) -> Result<Chunk> {
+        for i in 0..self.chunklist.len() {
+            if &self.chunklist[i].chunk_type().to_string() == chunktype {
+                return Ok(self.chunklist.remove(i));
+            }
+        }
+        return Err(Box::from(PngError::UnknownChunkType));
+    }
+
+    pub fn haeder(&self) -> &[u8; Png::HEADER_SIZE] {
+        return &self.header;
+    }
+
+    pub fn chunks(&self) -> &[Chunk] {
+        return &self.chunklist.as_ref();
+    }
+
+    pub fn chunk_by_type(&self, chunktype: &str) -> Option<&Chunk> {
+        for ck in &self.chunklist {
+            if ck.chunk_type().to_string() == chunktype {
+                return Some(ck);
+            }
+        }
+        return None;
+    }
+
+    pub fn as_bytes(&self) -> Vec<u8> {
+        let data_vec: Vec<u8> = self.chunklist.iter()
+                                              .flat_map(|ck|ck.as_bytes())
+                                              .collect();
+                                            //    .flat_map(|ck|ck.as_bytes())
+                                            //    .collect();
+        let raw_bytes: Vec<u8> = self.header.iter()
+                                            .chain(data_vec.iter())
+                                            .copied()
+                                            .collect();
+        return raw_bytes;
+    }
+
+    fn print_chunk(&self) {
+
     }
 }
 

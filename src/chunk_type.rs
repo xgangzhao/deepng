@@ -5,6 +5,7 @@
 use std::convert::TryFrom;
 use std::str::FromStr;
 use std::fmt;
+use crate::chunk_type_error::ChunkTypeError;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ChunkType {
@@ -38,25 +39,26 @@ impl ChunkType {
 }
 
 impl TryFrom<[u8; 4]> for ChunkType {
-    type Error = &'static str;
+    // type Error = &'static str;
+    type Error = ChunkTypeError;
     fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
         let all_valid = value.iter().all(|&x| (x >= 65 && x <= 90) || (x >= 97 && x <= 122));
         if all_valid == true {
             Ok(ChunkType { code: value })
         } else {
-            Err("Invalid input!")
+            Err(ChunkTypeError::InvalidByte)
         }
     }
 }
 
 impl FromStr for ChunkType {
-    type Err = &'static str;
+    type Err = ChunkTypeError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.len() == 4 {
             let value: [u8; 4] = s.to_string().into_bytes().try_into().unwrap();
             Ok(ChunkType::try_from(value)?)
         } else {
-            Err("The length of str inputed must be 4!")
+            Err(ChunkTypeError::InvalidLength)
         }
     } 
 }

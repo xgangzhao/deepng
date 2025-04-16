@@ -12,8 +12,8 @@ pub enum ChunkTypeError {
 impl fmt::Display for ChunkTypeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ChunkTypeError::InvalidByte => write!(f, "Invalid byte found in input"),
-            ChunkTypeError::InvalidLength     => write!(f, "Invalid length of input"),
+            ChunkTypeError::InvalidByte   => write!(f, "Invalid byte found in input"),
+            ChunkTypeError::InvalidLength => write!(f, "Invalid length of input"),
         }
     }
 }

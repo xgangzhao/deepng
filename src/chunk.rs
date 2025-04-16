@@ -58,7 +58,12 @@ impl TryFrom<&[u8]> for Chunk {
 impl fmt::Display for Chunk {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = String::from("Unimplemented");
-        write!(f, "{}", s)
+        write!(f, "{}", s);
+        writeln!(f, "length: {}", self.length());
+        writeln!(f, "chunk type: {}", self.chunk_type().to_string());
+        writeln!(f, "data:");
+        writeln!(f, )
+    )
     }
 }
 

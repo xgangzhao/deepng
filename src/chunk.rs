@@ -7,17 +7,18 @@ use std::fmt;
 use crc32fast::hash;
 use crc::{Crc, CRC_32_ISO_HDLC};
 use crate::chunk_type::ChunkType;
+use crate::chunk_error::ChunkError;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Chunk {
-    length    : u32,
+    length    : u32, // length of chunkdata field
     chunktype : ChunkType,
     chunkdata : Vec<u8>,
     crc       : u32,
 }
 
 impl TryFrom<&[u8]> for Chunk {
-    type Error = &'static str;
+    type Error = ChunkError;
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         let size = value.len();
         if size >= Chunk::CHUNK_MINIMUM {
@@ -25,13 +26,13 @@ impl TryFrom<&[u8]> for Chunk {
             let length = u32::from_be_bytes(blength.try_into().unwrap());
             let ulength: usize = length.try_into().unwrap();
             if ulength + Chunk::CHUNK_MINIMUM > size {
-                return Err("Invalid input!");
+                return Err(ChunkError::InvalidLength);
             }
             let (bchunktype, value) = value.split_at(Chunk::CHUNK_TYPE_BYTES);
             let bchunktype: [u8; 4] = bchunktype.try_into().unwrap();
             let chunktype = match ChunkType::try_from(bchunktype) {
-                Ok(ChunkType) => ChunkType,
-                Err(err) => return Err("Invalid input!"),
+                Ok(ct) => ct,
+                Err(err) => return Err(ChunkError::InvalidChunkType(err)),
             };
             let (chunkdata, value) = value.split_at(ulength);
             let (bcrc, _) = value.split_at(Chunk::CHUNK_CRC_BYTES);
@@ -46,11 +47,11 @@ impl TryFrom<&[u8]> for Chunk {
             let crc_verify = crc_obj.checksum(&bytes_verify);
             dbg!(crc_verify, crc_read);
             if crc_read != crc_verify {
-                return Err("Invalid crc!");
+                return Err(ChunkError::InvalidCRC);
             }
             return Ok(Chunk { length: length, chunktype: chunktype, chunkdata: chunkdata.to_vec(), crc: crc_read });
         }
-        return Err("Invalid input!");
+        return Err(ChunkError::InvalidLength);
     }
 }
 

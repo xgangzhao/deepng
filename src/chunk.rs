@@ -6,9 +6,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use crc32fast::hash;
 use crc::{Crc, CRC_32_ISO_HDLC};
-use crate::{chunk, chunk_type};
-use super::chunk_type::ChunkType;
-
+use crate::chunk_type::ChunkType;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Chunk {
@@ -22,12 +20,11 @@ impl TryFrom<&[u8]> for Chunk {
     type Error = &'static str;
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         let size = value.len();
-        let CHUNK_MINIMUM = Chunk::CHUNK_CRC_BYTES + Chunk::CHUNK_LENGTH_BYTES + Chunk::CHUNK_TYPE_BYTES;
-        if size >= CHUNK_MINIMUM {
+        if size >= Chunk::CHUNK_MINIMUM {
             let (blength, value) = value.split_at(Chunk::CHUNK_LENGTH_BYTES);
             let length = u32::from_be_bytes(blength.try_into().unwrap());
             let ulength: usize = length.try_into().unwrap();
-            if ulength + CHUNK_MINIMUM > size {
+            if ulength + Chunk::CHUNK_MINIMUM > size {
                 return Err("Invalid input!");
             }
             let (bchunktype, value) = value.split_at(Chunk::CHUNK_TYPE_BYTES);
@@ -68,6 +65,7 @@ impl Chunk {
     pub const CHUNK_LENGTH_BYTES: usize = 4;
     pub const CHUNK_TYPE_BYTES:   usize = 4;
     pub const CHUNK_CRC_BYTES:    usize = 4;
+    pub const CHUNK_MINIMUM: usize = Chunk::CHUNK_CRC_BYTES + Chunk::CHUNK_LENGTH_BYTES + Chunk::CHUNK_TYPE_BYTES;
 
     pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
         let size: u32 = data.len().try_into().unwrap();

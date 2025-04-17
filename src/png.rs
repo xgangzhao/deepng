@@ -7,7 +7,7 @@ use std::fmt;
 use crate::{chunk::Chunk, Error, Result};
 use crate::png_error::PngError;
 
-struct Png {
+pub struct Png {
     header   : [u8; Png::HEADER_SIZE],
     chunklist: Vec<Chunk>,
 }

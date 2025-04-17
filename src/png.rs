@@ -15,19 +15,20 @@ struct Png {
 impl TryFrom<&[u8]> for Png {
     type Error = Error;
     fn try_from(value: &[u8]) -> Result<Self> {
+        if value.len() < Png::HEADER_SIZE + Chunk::CHUNK_MINIMUM {
+            return Err(Box::from(PngError::InvalidLength));
+        }
         let (header, value) = value.split_at(Png::HEADER_SIZE);
         if header != Png::STANDARD_HEADER {
             return Err(Box::from(PngError::InvalidHeader));
         }
         let header: [u8; Png::HEADER_SIZE] = header.try_into().unwrap();
         let mut chunklist: Vec<Chunk> = Vec::new();
-        while value.len() >= Chunk::CHUNK_MINIMUM {
-            let chunk = match Chunk::try_from(value) {
-                Ok(ck) => ck,
-                Err(err) => return Err(Box::from(PngError::InvalidChunk(err))),
-            };
-            chunklist.push(chunk);
-            let (_, value) = value.split_at(chunklist.last().unwrap().length() as usize + Chunk::CHUNK_MINIMUM);
+        let mut i = 0;
+        while i < value.len() {
+            let ck = Chunk::try_from(&value[i..])?;
+            i += (ck.length() as usize + Chunk::CHUNK_MINIMUM);
+            chunklist.push(ck);
         }
         return Ok(Png {header: header, chunklist: chunklist });
     }
@@ -35,15 +36,16 @@ impl TryFrom<&[u8]> for Png {
 
 impl fmt::Display for Png {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "signature: ");
+        writeln!(f, "signature: ")?;
         for byte in &self.header {
-            write!(f, "{} ", byte);
+            write!(f, "{} ", byte)?;
         }
-        writeln!(f, "");
-        for i in 0..self.chunklist.len() {
-            writeln!(f, "chunk {}: ", i);
-            
+        writeln!(f, "")?;
+        for (i, ck) in self.chunks().iter().enumerate() {
+            writeln!(f, "chunk #{} :", i)?;
+            writeln!(f, "{}", ck.to_string())?;
         }
+        write!(f, "done!")
     }
 }
 
@@ -74,7 +76,7 @@ impl Png {
     }
 
     pub fn chunks(&self) -> &[Chunk] {
-        return &self.chunklist.as_ref();
+        return &self.chunklist;
     }
 
     pub fn chunk_by_type(&self, chunktype: &str) -> Option<&Chunk> {
@@ -97,10 +99,6 @@ impl Png {
                                             .copied()
                                             .collect();
         return raw_bytes;
-    }
-
-    fn print_chunk(&self) {
-
     }
 }
 
@@ -238,6 +236,9 @@ mod tests {
     #[test]
     fn test_png_from_image_file() {
         let png = Png::try_from(&PNG_FILE[..]);
+        // if let Ok(val) = png {
+        //     println!("{}", val.to_string());
+        // }
         assert!(png.is_ok());
     }
 

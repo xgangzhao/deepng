@@ -45,7 +45,6 @@ impl TryFrom<&[u8]> for Chunk {
             let crc_obj = Crc::<u32>::new(&CRC_32_ISO_HDLC);
 
             let crc_verify = crc_obj.checksum(&bytes_verify);
-            dbg!(crc_verify, crc_read);
             if crc_read != crc_verify {
                 return Err(ChunkError::InvalidCRC);
             }
@@ -57,13 +56,17 @@ impl TryFrom<&[u8]> for Chunk {
 
 impl fmt::Display for Chunk {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = String::from("Unimplemented");
-        write!(f, "{}", s);
-        writeln!(f, "length: {}", self.length());
-        writeln!(f, "chunk type: {}", self.chunk_type().to_string());
-        writeln!(f, "data:");
-        writeln!(f, )
-    )
+        writeln!(f, "length: {}", self.length())?;
+        writeln!(f, "chunk type: {}", self.chunk_type().to_string())?;
+        writeln!(f, "data: ")?;
+        for (i, byte) in self.data().iter().enumerate() {
+            if (i+1) % 16 == 0 || (i+1) == self.data().len() {
+                writeln!(f, "{:02x} ", byte)?;
+            } else {
+                write!(f, "{:02x} ", byte)?;
+            }
+        }
+        write!(f, "crc: {}", &self.crc)
     }
 }
 
@@ -142,6 +145,7 @@ mod tests {
         let chunk_type = ChunkType::from_str("RuSt").unwrap();
         let data = "This is where your secret message will be!".as_bytes().to_vec();
         let chunk = Chunk::new(chunk_type, data);
+        println!("{}", chunk.to_string());
         assert_eq!(chunk.length(), 42);
         assert_eq!(chunk.crc(), 2882656334);
     }

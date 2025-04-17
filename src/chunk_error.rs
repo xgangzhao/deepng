@@ -3,11 +3,12 @@
 //
 
 use std::fmt;
+use std::string::FromUtf8Error;
 use crate::chunk_type_error::ChunkTypeError;
 
 #[derive(Debug)]
 pub enum ChunkError {
-    InvalidByte,
+    Utf8Error(FromUtf8Error),
     InvalidLength,
     InvalidChunkType(ChunkTypeError),
     InvalidCRC,
@@ -16,7 +17,7 @@ pub enum ChunkError {
 impl fmt::Display for ChunkError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ChunkError::InvalidByte   => write!(f, "Invalid byte in input"),
+            ChunkError::Utf8Error(_)  => write!(f, "Invalid UTF-8 data"),
             ChunkError::InvalidLength => write!(f, "Invalid length of input"),
             ChunkError::InvalidChunkType(cte) => write!(f, "Invalid chunk type: {}", cte),
             ChunkError::InvalidCRC    => write!(f, "Invalid CRC in input"),

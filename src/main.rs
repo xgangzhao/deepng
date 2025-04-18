@@ -6,6 +6,7 @@ mod chunk_error;
 mod png_error;
 use clap::{arg, Arg, Command, ArgAction, command, value_parser};
 use std::{fs, io::Write, process::Output, str::FromStr};
+use std::path::PathBuf;
 
 pub type Error = Box<dyn std::error::Error>;
 pub type Result<T> = std::result::Result<T, Error>;
@@ -15,10 +16,11 @@ fn main() -> Result<()> {
                                             .num_args(1)
                                             .value_name("FILE")
                                             .hide_default_value(true)
-                                            .value_parser(value_parser!(String));
+                                            .value_parser(value_parser!(PathBuf));
     let ck_type  = arg!(-t --type "The chunk type to use for encoding").required(true)
                                             .num_args(1)
                                             .value_name("TYPE")
+                                            .help("Four characters with the first, second, and fourth characters in lowercase, and the third character in uppercase")
                                             .hide_default_value(true)
                                             .value_parser(value_parser!(String));
     let message = arg!(-m --message "The message to encode into the PNG file").required(true)
@@ -52,17 +54,45 @@ fn main() -> Result<()> {
             let in_file = encode.get_one::<String>("png_file").unwrap();
             let ck_type = encode.get_one::<String>("ck_type").unwrap();
             let message = encode.get_one::<String>("message").unwrap();
-            let out_file = encode.get_one::<String>("output").unwrap_or(&String::new());
+            let out_file = encode.get_one::<String>("output");
             let content = fs::read(in_file)?;
             let mut png = png::Png::try_from(content.as_ref())?;
             let ck_type = chunk_type::ChunkType::from_str(ck_type)?;
+            if ck_type.is_valid_type() == false {
+                return Err(Box::from(png_error::PngError::InvalidEncodeType));
+            }
             let ck = chunk::Chunk::new(ck_type, message.as_bytes().to_vec());
             png.append_chunk(ck);
-            if !out_file.is_empty() {
-                let mut ofile = fs::File::create(out_file)?;
-                ofile.write_all(&png.as_bytes())?;
+            match out_file {
+                Some(out_file) => {
+                    let mut ofile = fs::File::create(out_file)?;
+                    ofile.write_all(&png.as_bytes())?;
+                }
+                None => {
+                    let mut ofile = fs::File::create(in_file)?;
+                    ofile.write_all(&png.as_bytes())?;
+                }
             }
         }
+        Some(("decode", decode)) => {
+            let in_file = decode.get_one::<String>("png_file").unwrap();
+            let ck_type = decode.get_one::<String>("ck_type").unwrap();
+            let content = fs::read(in_file)?;
+            let mut png = png::Png::try_from(content.as_ref())?;
+            let ck = png.remove_last_chunk(ck_type);
+            match ck {
+                Ok(ck) => {
+                    let msg = ck.chunk_type().to_string();
+                    println!("{}", msg);
+                    let mut ofile = fs::File::create(in_file)?;
+                    ofile.write_all(&png.as_bytes())?;
+                }
+                Err(e) => {
+                    eprintln!("Error: {}", e);
+                }
+            }
+        }
+        _ => unreachable!("Unrecognized subcommand")
     }
 
     return Ok(());

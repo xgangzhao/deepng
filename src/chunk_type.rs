@@ -36,6 +36,10 @@ impl ChunkType {
     pub fn is_safe_to_copy(&self) -> bool {
         return self.code[3].is_ascii_lowercase();
     }
+
+    pub fn is_valid_type(&self) -> bool {
+        return !self.is_critical() && !self.is_public() && self.is_valid() && self.is_safe_to_copy();
+    }
 }
 
 impl TryFrom<[u8; 4]> for ChunkType {

@@ -71,6 +71,15 @@ impl Png {
         return Err(Box::from(PngError::UnknownChunkType));
     }
 
+    pub fn remove_last_chunk(&mut self, chunktype: &str) -> Result<Chunk> {
+        for i in (0..self.chunklist.len()).rev() {
+            if &self.chunklist[i].chunk_type().to_string() == chunktype {
+                return Ok(self.chunklist.remove(i));
+            }
+        }
+        return Err(Box::from(PngError::UnknownChunkType));
+    }
+
     pub fn haeder(&self) -> &[u8; Png::HEADER_SIZE] {
         return &self.header;
     }

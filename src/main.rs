@@ -32,7 +32,7 @@ fn main() -> Result<()> {
                                             .num_args(1)
                                             .value_name("FILE")
                                             .hide_default_value(true)
-                                            .value_parser(value_parser!(String));
+                                            .value_parser(value_parser!(PathBuf));
     let encode = Command::new("encode")
                          .arg(png_file.clone())
                          .arg(ck_type.clone())
@@ -51,11 +51,11 @@ fn main() -> Result<()> {
     // process argu
     match matches.subcommand() {
         Some(("encode", encode)) => {
-            let in_file = encode.get_one::<String>("png_file").unwrap();
-            let ck_type = encode.get_one::<String>("ck_type").unwrap();
+            let in_file = encode.get_one::<PathBuf>("file").unwrap();
+            let ck_type = encode.get_one::<String>("type").unwrap();
             let message = encode.get_one::<String>("message").unwrap();
-            let out_file = encode.get_one::<String>("output");
-            let content = fs::read(in_file)?;
+            let out_file = encode.get_one::<PathBuf>("out");
+            let content = fs::read(&in_file)?;
             let mut png = png::Png::try_from(content.as_ref())?;
             let ck_type = chunk_type::ChunkType::from_str(ck_type)?;
             if ck_type.is_valid_type() == false {
@@ -65,27 +65,35 @@ fn main() -> Result<()> {
             png.append_chunk(ck);
             match out_file {
                 Some(out_file) => {
-                    let mut ofile = fs::File::create(out_file)?;
+                    let mut ofile = fs::File::create(&out_file)?;
                     ofile.write_all(&png.as_bytes())?;
                 }
                 None => {
-                    let mut ofile = fs::File::create(in_file)?;
+                    let mut ofile = fs::File::create(&in_file)?;
                     ofile.write_all(&png.as_bytes())?;
                 }
             }
         }
         Some(("decode", decode)) => {
-            let in_file = decode.get_one::<String>("png_file").unwrap();
-            let ck_type = decode.get_one::<String>("ck_type").unwrap();
+            let in_file = decode.get_one::<PathBuf>("file").unwrap();
+            let ck_type = decode.get_one::<String>("type").unwrap();
+            let out_file = decode.get_one::<PathBuf>("out");
             let content = fs::read(in_file)?;
             let mut png = png::Png::try_from(content.as_ref())?;
             let ck = png.remove_last_chunk(ck_type);
             match ck {
-                Ok(ck) => {
-                    let msg = ck.chunk_type().to_string();
-                    println!("{}", msg);
-                    let mut ofile = fs::File::create(in_file)?;
-                    ofile.write_all(&png.as_bytes())?;
+                Ok(ck) => {   
+                    match out_file {
+                        Some(out_file) => {
+                            let msg = ck.data();
+                            let mut ofile = fs::File::create(&out_file)?;
+                            ofile.write_all(msg)?;
+                        }
+                        None => {
+                            let msg = ck.data_as_string()?;
+                            println!("{}", msg);
+                        }
+                    }
                 }
                 Err(e) => {
                     eprintln!("Error: {}", e);

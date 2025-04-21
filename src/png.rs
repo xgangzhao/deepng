@@ -80,7 +80,7 @@ impl Png {
         return Err(Box::from(PngError::UnknownChunkType));
     }
 
-    pub fn haeder(&self) -> &[u8; Png::HEADER_SIZE] {
+    pub fn header(&self) -> &[u8; Png::HEADER_SIZE] {
         return &self.header;
     }
 
@@ -238,6 +238,15 @@ mod tests {
         let mut png = testing_png();
         png.append_chunk(chunk_from_strings("TeSt", "Message").unwrap());
         png.remove_first_chunk("TeSt").unwrap();
+        let chunk = png.chunk_by_type("TeSt");
+        assert!(chunk.is_none());
+    }
+
+    #[test]
+    fn test_remove_last_chunk() {
+        let mut png = testing_png();
+        png.append_chunk(chunk_from_strings("TeSt", "Message").unwrap());
+        png.remove_last_chunk("TeSt").unwrap();
         let chunk = png.chunk_by_type("TeSt");
         assert!(chunk.is_none());
     }

@@ -12,7 +12,7 @@ pub type Error = Box<dyn std::error::Error>;
 pub type Result<T> = std::result::Result<T, Error>;
 
 fn main() -> Result<()> {
-    let png_file = arg!(-f --file "The PNG file to encode into").required(true)
+    let input = arg!(-f --file "The PNG file to encode into").required(true)
                                             .num_args(1)
                                             .value_name("FILE")
                                             .hide_default_value(true)
@@ -34,12 +34,12 @@ fn main() -> Result<()> {
                                             .hide_default_value(true)
                                             .value_parser(value_parser!(PathBuf));
     let encode = Command::new("encode")
-                         .arg(png_file.clone())
+                         .arg(input.clone())
                          .arg(ck_type.clone())
                          .arg(message.clone())
                          .arg(output.clone());
     let decode = Command::new("decode")
-                         .arg(png_file)
+                         .arg(input)
                          .arg(ck_type)
                          .arg(output);
 

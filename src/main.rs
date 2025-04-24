@@ -4,7 +4,7 @@ mod png;
 mod chunk_type_error;
 mod chunk_error;
 mod png_error;
-use clap::{arg, Arg, Command, ArgAction, command, value_parser};
+use clap::{arg, command, value_parser, Arg, ArgAction, ArgGroup, Command};
 use std::{fs, io::Write, process::Output, str::FromStr};
 use std::path::PathBuf;
 
@@ -13,31 +13,36 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 fn main() -> Result<()> {
     let input = arg!(-f --file "The PNG file to encode into").required(true)
-                                            .num_args(1)
                                             .value_name("FILE")
-                                            .hide_default_value(true)
+                                            .action(ArgAction::Set)
                                             .value_parser(value_parser!(PathBuf));
     let ck_type  = arg!(-t --type "The chunk type to use for encoding").required(true)
-                                            .num_args(1)
                                             .value_name("TYPE")
-                                            .help("Four characters with the first, second, and fourth characters in lowercase, and the third character in uppercase")
-                                            .hide_default_value(true)
+                                            .action(ArgAction::Set)
                                             .value_parser(value_parser!(String));
+    let msg_file = Arg::new("msg_file").short('M').long("message-file")
+                                           .help("The file contains content to be encoded into the PNG file")
+                                           .required(true)
+                                           .value_name("FILE")
+                                           .action(ArgAction::Set)
+                                           .value_parser(value_parser!(PathBuf));
     let message = arg!(-m --message "The message to encode into the PNG file").required(true)
-                                            .num_args(1)
-                                            .value_name("MESSAGE")
-                                            .hide_default_value(true)
+                                            .value_name("TEXT")
+                                            .action(ArgAction::Set)
                                             .value_parser(value_parser!(String));
     let output = arg!(-o --out "The output file to write the encoded PNG to")
-                                            .num_args(1)
                                             .value_name("FILE")
-                                            .hide_default_value(true)
+                                            .action(ArgAction::Set)
                                             .value_parser(value_parser!(PathBuf));
     let encode = Command::new("encode")
                          .arg(input.clone())
                          .arg(ck_type.clone())
+                         .arg(msg_file.clone())
                          .arg(message.clone())
-                         .arg(output.clone());
+                         .arg(output.clone())
+                         .group(ArgGroup::new("messages").args(["msg_file", "message"])
+                                                             .multiple(false)
+                                                             .required(true));
     let decode = Command::new("decode")
                          .arg(input)
                          .arg(ck_type)
